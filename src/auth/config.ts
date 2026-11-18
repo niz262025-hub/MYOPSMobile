@@ -1,6 +1,6 @@
 // Mobile SSO is staging-only until production authorization is approved.
 // Never silently fall back to production when a staging endpoint is unavailable.
-export const CENTRAL_ORIGIN = 'https://southerndotcom-website-mdx7k8rx1-mohd-syaiful-nizam1.vercel.app';
+export const CENTRAL_ORIGIN = 'https://southerndotcom-website-git-feat-mobi-f66adf-mohd-syaiful-nizam1.vercel.app';
 export const MOBILE_CALLBACK = 'myops://auth/callback';
 export const AUTH_ENDPOINTS = {
   authorize: CENTRAL_ORIGIN + '/api/mobile-auth/authorize',
