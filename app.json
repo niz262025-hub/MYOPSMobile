@@ -3,6 +3,7 @@
     "name": "MYOPS Mobile",
     "slug": "myopsmobile",
     "scheme": "myops",
+    "platforms": ["android", "ios"],
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
