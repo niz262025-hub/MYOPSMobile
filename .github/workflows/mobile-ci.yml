@@ -19,8 +19,10 @@ jobs:
         run: npm run typecheck
       - name: Expo configuration validation
         run: npx expo config --type public --json > /dev/null
-      - name: Expo export Android and iOS bundles
-        run: npx expo export --platform all --output-dir dist
+      - name: Expo export Android bundle
+        run: npx expo export --platform android --output-dir dist/android
+      - name: Expo export iOS bundle
+        run: npx expo export --platform ios --output-dir dist/ios
       - name: Upload bundles
         uses: actions/upload-artifact@v4
         with:
