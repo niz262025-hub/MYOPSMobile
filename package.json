@@ -20,7 +20,9 @@
     "react-native-screens": "~4.26.0",
     "expo-secure-store": "~15.0.7",
     "expo-crypto": "~15.0.7",
-    "base64-arraybuffer": "^1.0.2"
+    "base64-arraybuffer": "^1.0.2",
+    "react-dom": "19.2.8",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "typescript": "~5.9.3",
