@@ -20,7 +20,7 @@ jobs:
       - name: Expo configuration validation
         run: npx expo config --type public --json > /dev/null
       - name: Expo export Android and iOS bundles
-        run: npx expo export --platform all --output-dir dist
+        run: npx expo export --platform android --platform ios --output-dir dist
       - name: Upload bundles
         uses: actions/upload-artifact@v4
         with:
