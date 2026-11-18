@@ -53,7 +53,10 @@ export async function handleMobileCallback(callback:string):Promise<void> {
   if(!saved) return;
   try {
    const value=JSON.parse(saved);
-   if(typeof value.state!=='string'||typeof value.verifier!=='string'||Date.now()-value.createdAt>120000) return;
+   if(typeof value.state!=='string'||typeof value.verifier!=='string'||typeof value.createdAt!=='number'||value.createdAt>Date.now()||Date.now()-value.createdAt>120000){
+    await SecureStore.deleteItemAsync(PENDING_KEY);
+    return;
+   }
    pending={...value,resolve:()=>{},reject:()=>{},subscription:{remove:()=>{}}};
   }catch{return;}
  }
@@ -64,6 +67,11 @@ export async function handleMobileCallback(callback:string):Promise<void> {
  await SecureStore.deleteItemAsync(PENDING_KEY);
  if(parsed.searchParams.get('state')!==active.state){
   active.reject(new Error('Login state mismatch'));
+  return;
+ }
+ const oauthError=parsed.searchParams.get('error');
+ if(oauthError){
+  active.reject(new Error('MYOPS login was cancelled or rejected'));
   return;
  }
  const code=parsed.searchParams.get('code');
