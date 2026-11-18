@@ -33,7 +33,7 @@ export function refreshMobileSession():Promise<string|null> {
  if(!refreshInFlight) {
   const attempt=performRefresh();
   refreshInFlight=attempt;
-  void attempt.finally(()=>{if(refreshInFlight===attempt) refreshInFlight=null;});
+  void attempt.then(()=>{if(refreshInFlight===attempt) refreshInFlight=null;},()=>{if(refreshInFlight===attempt) refreshInFlight=null;});
  }
  return refreshInFlight;
 }
