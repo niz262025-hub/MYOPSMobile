@@ -1,6 +1,7 @@
 import React,{useState} from 'react';
 import {View,Text,FlatList,StyleSheet,Pressable,Linking,Alert} from 'react-native';
-import {catalog,CatalogApp} from '../src/catalog';
+import {catalog} from '../src/catalog';
+import type {CatalogApp} from '../src/catalog';
 import {startMobileLogin} from '../src/auth/native-login';
 import {getMobileAccessToken,logoutMobileSession} from '../src/auth/mobile-api';
 const MASTER='https://www.myops.com.my';
@@ -19,7 +20,7 @@ export default function Home() {
    <Text style={styles.muted}>{item.description}</Text>
    <Text style={available?styles.available:styles.muted}>{available?'Available':'Coming Soon'}</Text>
    {available ? <>
-    <Pressable accessibilityRole="button" accessibilityLabel={'Try or subscribe to '+item.name} style={styles.smallButton} onPress={()=>open(MASTER)}><Text style={styles.buttonText}>Try / Subscribe</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={'Explore trial and plans for '+item.name} style={styles.smallButton} onPress={()=>open(MASTER)}><Text style={styles.buttonText}>Explore Trial / Plans</Text></Pressable>
     <Pressable accessibilityRole="button" accessibilityLabel={'Open '+item.name} style={styles.secondaryButton} onPress={()=>open(item.url!)}><Text style={styles.secondaryText}>Open App</Text></Pressable>
    </> : <Text style={styles.muted}>Subscription not yet available</Text>}
   </View>;
