@@ -6,6 +6,7 @@ import { createChallenge, createState, createVerifier } from './pkce';
 import { setMobileTokens } from './mobile-api';
 
 let pending: {state:string;verifier:string;resolve:()=>void;reject:(error:Error)=>void;subscription:{remove:()=>void}}|null=null;
+let callbackInProgress=false;
 
 export function cancelMobileLogin() {
  if(!pending) return;
@@ -39,6 +40,12 @@ export async function startMobileLogin():Promise<void> {
 }
 
 export async function handleMobileCallback(callback:string):Promise<void> {
+ if(callbackInProgress) return;
+ let parsed:URL;
+ try{parsed=new URL(callback)}catch{return;}
+ if(parsed.protocol!=='myops:'||parsed.hostname!=='auth'||parsed.pathname!=='/callback') return;
+ callbackInProgress=true;
+ try {
  const current=pending;
  if(!current) {
   // Cold-start callback: restore the short-lived PKCE transaction securely.
@@ -52,9 +59,6 @@ export async function handleMobileCallback(callback:string):Promise<void> {
  }
  const active=pending;
  if(!active) return;
- let parsed:URL;
- try{parsed=new URL(callback)}catch{return;}
- if(parsed.protocol!=='myops:'||parsed.hostname!=='auth'||parsed.pathname!=='/callback') return;
  pending=null;
  active.subscription.remove();
  await SecureStore.deleteItemAsync(PENDING_KEY);
@@ -75,4 +79,5 @@ export async function handleMobileCallback(callback:string):Promise<void> {
   await setMobileTokens(await response.json());
   active.resolve();
  }catch(error){active.reject(error instanceof Error?error:new Error('Mobile login failed'));}
+ } finally { callbackInProgress=false; }
 }
