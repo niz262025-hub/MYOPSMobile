@@ -1,4 +1,6 @@
 import { Linking } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+const PENDING_KEY='myops.mobile.pkce.pending.v1';
 import { AUTH_ENDPOINTS, MOBILE_CALLBACK } from './config';
 import { createChallenge, createState, createVerifier } from './pkce';
 import { setMobileTokens } from './mobile-api';
@@ -10,6 +12,7 @@ export function cancelMobileLogin() {
  const current=pending;
  pending=null;
  current.subscription.remove();
+ void SecureStore.deleteItemAsync(PENDING_KEY);
  current.reject(new Error('Login cancelled'));
 }
 
@@ -24,6 +27,7 @@ export async function startMobileLogin():Promise<void> {
  url.searchParams.set('code_challenge_method','S256');
  url.searchParams.set('code_challenge',challenge);
  url.searchParams.set('state',state);
+ await SecureStore.setItemAsync(PENDING_KEY,JSON.stringify({state,verifier,createdAt:Date.now()}),{keychainAccessible:SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY});
  return new Promise<void>((resolve,reject)=>{
   const subscription=Linking.addEventListener('url',({url:callback})=>{void handleMobileCallback(callback)});
   pending={state,verifier,resolve,reject,subscription};
@@ -36,27 +40,39 @@ export async function startMobileLogin():Promise<void> {
 
 export async function handleMobileCallback(callback:string):Promise<void> {
  const current=pending;
- if(!current) return;
+ if(!current) {
+  // Cold-start callback: restore the short-lived PKCE transaction securely.
+  const saved=await SecureStore.getItemAsync(PENDING_KEY);
+  if(!saved) return;
+  try {
+   const value=JSON.parse(saved);
+   if(typeof value.state!=='string'||typeof value.verifier!=='string'||Date.now()-value.createdAt>120000) return;
+   pending={...value,resolve:()=>{},reject:()=>{},subscription:{remove:()=>{}}};
+  }catch{return;}
+ }
+ const active=pending;
+ if(!active) return;
  let parsed:URL;
  try{parsed=new URL(callback)}catch{return;}
  if(parsed.protocol!=='myops:'||parsed.hostname!=='auth'||parsed.pathname!=='/callback') return;
  pending=null;
- current.subscription.remove();
- if(parsed.searchParams.get('state')!==current.state){
-  current.reject(new Error('Login state mismatch'));
+ active.subscription.remove();
+ await SecureStore.deleteItemAsync(PENDING_KEY);
+ if(parsed.searchParams.get('state')!==active.state){
+  active.reject(new Error('Login state mismatch'));
   return;
  }
  const code=parsed.searchParams.get('code');
  if(!code||!/^[A-Za-z0-9_-]{32,256}$/.test(code)){
-  current.reject(new Error('Missing authorization code'));
+  active.reject(new Error('Missing authorization code'));
   return;
  }
  try {
   const response=await fetch(AUTH_ENDPOINTS.token,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-   grant_type:'authorization_code',client_id:'myopsmobile',redirect_uri:MOBILE_CALLBACK,code,code_verifier:current.verifier
+   grant_type:'authorization_code',client_id:'myopsmobile',redirect_uri:MOBILE_CALLBACK,code,code_verifier:active.verifier
   })});
   if(!response.ok) throw new Error('Token exchange rejected');
   await setMobileTokens(await response.json());
-  current.resolve();
- }catch(error){current.reject(error instanceof Error?error:new Error('Mobile login failed'));}
+  active.resolve();
+ }catch(error){active.reject(error instanceof Error?error:new Error('Mobile login failed'));}
 }
