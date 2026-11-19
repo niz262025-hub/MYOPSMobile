@@ -1,4 +1,4 @@
-import { AUTH_ENDPOINTS } from './config';
+import { AUTH_ENDPOINTS, MOBILE_CLIENT_ID } from './config';
 import { clearRefreshToken, getRefreshToken, saveRefreshToken } from './session';
 
 type TokenResponse = {access_token:string;refresh_token:string;expires_in:number;token_type:'Bearer'};
@@ -19,7 +19,7 @@ async function performRefresh():Promise<string|null> {
  const saved=await getRefreshToken();
  if(!saved) return null;
  try {
-  const response=await post(AUTH_ENDPOINTS.refresh,{grant_type:'refresh_token',client_id:'myopsmobile',refresh_token:saved});
+  const response=await post(AUTH_ENDPOINTS.refresh,{client_id:MOBILE_CLIENT_ID,refresh_token:saved});
   if(!response.ok) {
    if(response.status===400||response.status===401) await clearMobileSession();
    return null;
@@ -44,7 +44,13 @@ export async function getMobileAccessToken():Promise<string|null> {
 export async function logoutMobileSession():Promise<void> {
  const saved=await getRefreshToken();
  try {
-  if(saved||accessToken) await post(AUTH_ENDPOINTS.revoke,saved?{refresh_token:saved}:{},accessToken||undefined);
+  if(accessToken) {
+   await post(AUTH_ENDPOINTS.revoke,{},accessToken);
+   return;
+  }
+  if(saved) {
+   await post(AUTH_ENDPOINTS.revoke,{client_id:MOBILE_CLIENT_ID,refresh_token:saved});
+  }
  }finally{await clearMobileSession();}
 }
 export async function clearMobileSession() {
