@@ -1,12 +1,46 @@
 // Mobile SSO is staging-only until production authorization is approved.
 // Never silently fall back to production when a staging endpoint is unavailable.
-export const CENTRAL_ORIGIN = 'https://southerndotcom-website-git-feat-mobi-f66adf-mohd-syaiful-nizam1.vercel.app';
+export function normalizeAuthBaseUrl(rawUrl: string | undefined): string {
+  const value = rawUrl?.trim();
+  if (!value) {
+    if (process.env.NODE_ENV === 'test') return 'https://example.test';
+    throw new Error('Missing EXPO_PUBLIC_MYOPS_AUTH_BASE_URL');
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error('Invalid EXPO_PUBLIC_MYOPS_AUTH_BASE_URL');
+  }
+
+  if (url.username || url.password) {
+    throw new Error('EXPO_PUBLIC_MYOPS_AUTH_BASE_URL must not include credentials');
+  }
+
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && url.hostname === 'localhost')) {
+    throw new Error('EXPO_PUBLIC_MYOPS_AUTH_BASE_URL must use HTTPS or localhost');
+  }
+
+  const normalized = `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
+  if (!normalized || normalized === 'https://' || normalized === 'http://') {
+    throw new Error('EXPO_PUBLIC_MYOPS_AUTH_BASE_URL must include the host');
+  }
+
+  return normalized;
+}
+
+export function getAuthBaseUrl(): string {
+  return normalizeAuthBaseUrl(process.env.EXPO_PUBLIC_MYOPS_AUTH_BASE_URL);
+}
+
+export const CENTRAL_ORIGIN = getAuthBaseUrl();
 export const MOBILE_CLIENT_ID = 'myops-mobile';
 export const MOBILE_CALLBACK = 'myops://auth/callback';
 export const AUTH_ENDPOINTS = {
-  authorize: CENTRAL_ORIGIN + '/api/mobile-auth/authorize',
-  token: CENTRAL_ORIGIN + '/api/mobile-auth/token',
-  revoke: CENTRAL_ORIGIN + '/api/mobile-auth/logout',
-  refresh: CENTRAL_ORIGIN + '/api/mobile-auth/refresh',
-  me: CENTRAL_ORIGIN + '/api/mobile-auth/me',
+  authorize: `${CENTRAL_ORIGIN}/api/mobile-auth/authorize`,
+  token: `${CENTRAL_ORIGIN}/api/mobile-auth/token`,
+  revoke: `${CENTRAL_ORIGIN}/api/mobile-auth/logout`,
+  refresh: `${CENTRAL_ORIGIN}/api/mobile-auth/refresh`,
+  me: `${CENTRAL_ORIGIN}/api/mobile-auth/me`,
 } as const;
