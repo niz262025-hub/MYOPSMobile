@@ -16,6 +16,13 @@
     },
     "android": {
       "package": "my.myops.mobile"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f1b7bd31-157b-40c5-b77f-494655784290"
+      }
+    },
+    "owner": "syaifulnizam83"
   }
 }
