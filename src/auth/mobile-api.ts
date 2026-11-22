@@ -41,11 +41,34 @@ export async function getMobileAccessToken():Promise<string|null> {
  if(accessToken&&Date.now()<accessExpiresAt) return accessToken;
  return refreshMobileSession();
 }
+export async function verifyMobileSession(): Promise<boolean> {
+ const token = await getMobileAccessToken();
+ if (!token) return false;
+ const response = await fetch(AUTH_ENDPOINTS.me, {
+  headers: { Authorization: 'Bearer ' + token },
+ });
+ if (response.status === 401) {
+  await clearMobileSession();
+  return false;
+ }
+ if (!response.ok) throw new Error('MYOPS session verification is unavailable.');
+ const identity = await response.json();
+ if (identity?.active !== true || typeof identity.user_id !== 'string' || !identity.user_id) {
+  throw new Error('MYOPS returned an invalid session.');
+ }
+ return true;
+}
 export async function logoutMobileSession():Promise<void> {
- const saved=await getRefreshToken();
  try {
-  if(saved||accessToken) await post(AUTH_ENDPOINTS.revoke,saved?{refresh_token:saved}:{},accessToken||undefined);
- }finally{await clearMobileSession();}
+  await refreshInFlight;
+  const saved = await getRefreshToken();
+  if (saved || accessToken) {
+   const response = await post(AUTH_ENDPOINTS.revoke, saved ? {refresh_token:saved} : {}, accessToken || undefined);
+   if (!response.ok) throw new Error('MYOPS could not confirm remote logout.');
+  }
+ } finally {
+  await clearMobileSession();
+ }
 }
 export async function clearMobileSession() {
  accessToken=null;
