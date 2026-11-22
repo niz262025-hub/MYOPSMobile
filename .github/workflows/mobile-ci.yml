@@ -14,7 +14,13 @@ jobs:
         with:
           node-version: '22'
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+      - name: Unit tests
+        run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Use the internal Preview Central origin
+        run: node -e 'console.log("EXPO_PUBLIC_MYOPS_AUTH_BASE_URL=" + require("./eas.json").build.preview.env.EXPO_PUBLIC_MYOPS_AUTH_BASE_URL)' >> "$GITHUB_ENV"
       - name: TypeScript strict typecheck
         run: npm run typecheck
       - name: Expo configuration validation
