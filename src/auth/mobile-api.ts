@@ -55,7 +55,7 @@ const post = async (url: string, body: object, authorization?: string, method = 
   return fetch(url, {
     method,
     headers,
-    body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+    body: method === 'GET' ? undefined : JSON.stringify(body),
   });
 };
 
@@ -63,10 +63,10 @@ async function validateSessionWithServer(token: string): Promise<boolean> {
   if (!token) return false;
 
   try {
-    const response = await post(AUTH_ENDPOINTS.me, {}, token, 'POST');
+    const response = await post(AUTH_ENDPOINTS.me, {}, token, 'GET');
     if (!response.ok) return false;
     const payload = await response.json();
-    return !!payload && typeof payload === 'object' && !Array.isArray(payload);
+    return payload?.active === true && typeof payload.user_id === 'string' && payload.user_id.length > 0;
   } catch {
     return false;
   }
@@ -84,7 +84,7 @@ async function performRefresh(): Promise<string | null> {
   if (!saved) return null;
 
   try {
-    const response = await post(AUTH_ENDPOINTS.refresh, { client_id: MOBILE_CLIENT_ID, refresh_token: saved });
+    const response = await post(AUTH_ENDPOINTS.refresh, { grant_type: 'refresh_token', client_id: MOBILE_CLIENT_ID, refresh_token: saved });
     if (!response.ok) {
       await clearMobileSession();
       return null;
@@ -145,15 +145,14 @@ export async function getMobileAccessToken(): Promise<string | null> {
 }
 
 export async function logoutMobileSession(): Promise<void> {
-  const saved = await getRefreshToken();
   try {
-    if (accessToken) {
-      await post(AUTH_ENDPOINTS.revoke, {}, accessToken);
-      return;
-    }
-    if (saved) {
-      await post(AUTH_ENDPOINTS.revoke, { client_id: MOBILE_CLIENT_ID, refresh_token: saved });
-    }
+    if (refreshInFlight) await refreshInFlight;
+    const saved = await getRefreshToken();
+    if (!saved && !accessToken) return;
+    const response = await post(AUTH_ENDPOINTS.revoke, saved
+      ? { client_id: MOBILE_CLIENT_ID, refresh_token: saved }
+      : {}, accessToken ?? undefined);
+    if (!response.ok) throw new Error('MYOPS logout could not be confirmed');
   } finally {
     await clearMobileSession();
   }

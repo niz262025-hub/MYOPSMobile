@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Linking } from 'react-native';
 
-import { AUTH_ENDPOINTS, MOBILE_CALLBACK, MOBILE_CLIENT_ID } from './config';
+import { AUTH_ENDPOINTS, MOBILE_CALLBACK, MOBILE_CLIENT_ID, mobileAuthorizationUrl } from './config';
 import { isFreshPendingTransaction, validateMobileCallback } from './callback';
 import { setMobileTokens } from './mobile-api';
 import { createChallenge, createState, createVerifier } from './pkce';
@@ -10,7 +10,6 @@ const PENDING_KEY = 'myops.mobile.pkce.pending.v1';
 
 type PendingLogin = {
   state: string;
-  nonce: string;
   verifier: string;
   resolve: () => void;
   reject: (error: Error) => void;
@@ -34,8 +33,7 @@ async function exchangeAuthorizationCode(code: string, verifier: string) {
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(body ? `Token exchange rejected: ${body}` : 'Token exchange rejected');
+    throw new Error(`Token exchange rejected (${response.status})`);
   }
 
   const payload = await response.json();
@@ -56,55 +54,24 @@ export async function startMobileLogin(): Promise<void> {
 
   const verifier = createVerifier();
   const state = createState();
-  const nonce = createState();
   const challenge = await createChallenge(verifier);
   await SecureStore.setItemAsync(
     PENDING_KEY,
-    JSON.stringify({ state, nonce, verifier, createdAt: Date.now() }),
+    JSON.stringify({ state, verifier, createdAt: Date.now() }),
     { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
   );
 
   return new Promise<void>((resolve, reject) => {
     const subscription = Linking.addEventListener('url', ({ url: callback }) => { void handleMobileCallback(callback); });
-    pending = { state, nonce, verifier, resolve, reject, subscription };
+    pending = { state, verifier, resolve, reject, subscription };
 
-    fetch(AUTH_ENDPOINTS.authorize, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        client_id: MOBILE_CLIENT_ID,
-        redirect_uri: MOBILE_CALLBACK,
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-        state,
-        nonce,
-      }),
-    }).then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`Authorization request rejected (${response.status})`);
-      }
-      const payload = await response.json();
-      if (typeof payload?.code !== 'string') {
-        throw new Error('Missing authorization code');
-      }
-      if (payload?.state && payload.state !== state) {
-        throw new Error('Login state mismatch');
-      }
-
-      await exchangeAuthorizationCode(payload.code, verifier);
-      if (pending?.state === state) {
-        pending.resolve();
-        pending = null;
-        subscription.remove();
-        await SecureStore.deleteItemAsync(PENDING_KEY);
-      }
-    }).catch((error) => {
-      if (pending?.state === state) {
-        pending.reject(error instanceof Error ? error : new Error('Mobile login failed'));
-        pending = null;
-        subscription.remove();
-        void SecureStore.deleteItemAsync(PENDING_KEY);
-      }
+    const timeout = setTimeout(() => {
+      if (pending?.state === state) cancelMobileLogin();
+    }, 5 * 60 * 1000);
+    pending.resolve = () => { clearTimeout(timeout); resolve(); };
+    pending.reject = (error) => { clearTimeout(timeout); reject(error); };
+    void Linking.openURL(mobileAuthorizationUrl(challenge, state)).catch(() => {
+      if (pending?.state === state) cancelMobileLogin();
     });
   });
 }
@@ -137,14 +104,11 @@ export async function handleMobileCallback(callback: string): Promise<void> {
     const active = pending;
     if (!active) return;
 
+    if (parsed.state !== active.state) return;
+
     pending = null;
     active.subscription.remove();
     await SecureStore.deleteItemAsync(PENDING_KEY);
-
-    if (parsed.state !== active.state) {
-      active.reject(new Error('Login state mismatch'));
-      return;
-    }
 
     if (!parsed.code || !/^[A-Za-z0-9_-]{32,256}$/.test(parsed.code)) {
       active.reject(new Error('Missing authorization code'));

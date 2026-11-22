@@ -59,3 +59,18 @@ test('validateMobileCallback rejects malformed URLs, wrong route, and inconsiste
   assert.equal(validateMobileCallback(`myops://auth/callback?state=${state}&code=bad`), null);
   assert.equal(validateMobileCallback(`myops://auth/callback?state=wrong&code=${code}`, state), null);
 });
+
+test('native browser authorization matches the central OAuth query contract', async () => {
+  process.env.EXPO_PUBLIC_MYOPS_AUTH_BASE_URL = 'https://staging.myops.example.com';
+  const { mobileAuthorizationUrl } = await loadConfig();
+  const url = new URL(mobileAuthorizationUrl('challenge', 'state'));
+  assert.equal(url.pathname, '/api/mobile-auth/authorize');
+  assert.deepEqual(Object.fromEntries(url.searchParams), {
+    client_id: 'myopsmobile',
+    redirect_uri: 'myops://auth/callback',
+    response_type: 'code',
+    code_challenge: 'challenge',
+    code_challenge_method: 'S256',
+    state: 'state',
+  });
+});

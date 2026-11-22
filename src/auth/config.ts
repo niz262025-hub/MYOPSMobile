@@ -35,7 +35,7 @@ export function getAuthBaseUrl(): string {
 }
 
 export const CENTRAL_ORIGIN = getAuthBaseUrl();
-export const MOBILE_CLIENT_ID = 'myops-mobile';
+export const MOBILE_CLIENT_ID = 'myopsmobile';
 export const MOBILE_CALLBACK = 'myops://auth/callback';
 export const AUTH_ENDPOINTS = {
   authorize: `${CENTRAL_ORIGIN}/api/mobile-auth/authorize`,
@@ -44,3 +44,15 @@ export const AUTH_ENDPOINTS = {
   refresh: `${CENTRAL_ORIGIN}/api/mobile-auth/refresh`,
   me: `${CENTRAL_ORIGIN}/api/mobile-auth/me`,
 } as const;
+
+export function mobileAuthorizationUrl(challenge: string, state: string): string {
+  const params = new URLSearchParams({
+    client_id: MOBILE_CLIENT_ID,
+    redirect_uri: MOBILE_CALLBACK,
+    response_type: 'code',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state,
+  });
+  return `${AUTH_ENDPOINTS.authorize}?${params}`;
+}
