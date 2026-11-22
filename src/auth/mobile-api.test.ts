@@ -1,8 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { validateMobileCallback } from './callback.ts';
+import { isFreshPendingTransaction, validateMobileCallback } from './callback.ts';
 import { computeAccessExpiry, isServerSessionPayload, parseTokenResponse, shouldRefreshAccessToken } from './token-state.ts';
+
+test('pending login expires after five minutes and rejects future timestamps', () => {
+  const now = 1_700_000_000_000;
+  assert.equal(isFreshPendingTransaction(now - 300_000, now), true);
+  assert.equal(isFreshPendingTransaction(now - 300_001, now), false);
+  assert.equal(isFreshPendingTransaction(now + 1, now), false);
+  assert.equal(isFreshPendingTransaction(Number.NaN, now), false);
+});
 
 test('response schema validation rejects malformed token payloads', () => {
   assert.throws(() => parseTokenResponse({ access_token: 'abc' }), /Malformed token response/);

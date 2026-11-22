@@ -11,6 +11,7 @@ const PENDING_KEY = 'myops.mobile.pkce.pending.v1';
 type PendingLogin = {
   state: string;
   verifier: string;
+  createdAt: number;
   resolve: () => void;
   reject: (error: Error) => void;
   subscription: { remove: () => void };
@@ -55,15 +56,16 @@ export async function startMobileLogin(): Promise<void> {
   const verifier = createVerifier();
   const state = createState();
   const challenge = await createChallenge(verifier);
+  const createdAt = Date.now();
   await SecureStore.setItemAsync(
     PENDING_KEY,
-    JSON.stringify({ state, verifier, createdAt: Date.now() }),
+    JSON.stringify({ state, verifier, createdAt }),
     { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY },
   );
 
   return new Promise<void>((resolve, reject) => {
     const subscription = Linking.addEventListener('url', ({ url: callback }) => { void handleMobileCallback(callback); });
-    pending = { state, verifier, resolve, reject, subscription };
+    pending = { state, verifier, createdAt, resolve, reject, subscription };
 
     const timeout = setTimeout(() => {
       if (pending?.state === state) cancelMobileLogin();
@@ -103,6 +105,14 @@ export async function handleMobileCallback(callback: string): Promise<void> {
 
     const active = pending;
     if (!active) return;
+
+    if (!isFreshPendingTransaction(active.createdAt)) {
+      pending = null;
+      active.subscription.remove();
+      await SecureStore.deleteItemAsync(PENDING_KEY);
+      active.reject(new Error('Login expired'));
+      return;
+    }
 
     if (parsed.state !== active.state) return;
 

@@ -1,22 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Linking, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { catalog } from '../src/catalog';
 import type { CatalogApp } from '../src/catalog';
 import { startMobileLogin } from '../src/auth/native-login';
 import { bootstrapMobileSession, getMobileAccessToken, logoutMobileSession } from '../src/auth/mobile-api';
 
-import { CENTRAL_ORIGIN } from '../src/auth/config';
-
-const ACCOUNT_URL = new URL('/account', CENTRAL_ORIGIN).href;
-const PRICING_URL = new URL('/pricing', CENTRAL_ORIGIN).href;
-
-const open = async (url: string) => {
-  try {
-    await Linking.openURL(url);
-  } catch {
-    Alert.alert('Unable to open MYOPS', 'Please try again.');
-  }
-};
+import { router } from 'expo-router';
 
 export default function Home() {
   const [status, setStatus] = useState('Login with MYOPS to check your account.');
@@ -72,16 +61,13 @@ export default function Home() {
   };
 
   const renderApp = ({ item }: { item: CatalogApp }) => {
-    const available = item.status === 'available';
+    const phaseOne = item.phase === 1;
     return <View style={styles.card}>
       <Text style={styles.emoji}>{item.icon}</Text>
       <Text style={styles.name}>{item.name}</Text>
       <Text style={styles.muted}>{item.description}</Text>
-      <Text style={available ? styles.available : styles.muted}>{available ? 'Available' : 'Coming Soon'}</Text>
-      {available ? <>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Explore trial and plans for ' + item.name} style={styles.smallButton} onPress={() => open(PRICING_URL)}><Text style={styles.buttonText}>Explore Trial / Plans</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Open MYOPS account to launch ' + item.name} style={styles.secondaryButton} onPress={() => open(ACCOUNT_URL)}><Text style={styles.secondaryText}>Open via MYOPS</Text></Pressable>
-      </> : <Text style={styles.muted}>Subscription not yet available</Text>}
+      <Text style={styles.muted}>{phaseOne ? 'Mobile module in development' : 'Coming Soon'}</Text>
+      {phaseOne && <Pressable accessibilityRole="button" accessibilityLabel={'View ' + item.name} style={styles.secondaryButton} onPress={() => router.push({ pathname: '/module/[slug]', params: { slug: item.slug } })}><Text style={styles.secondaryText}>View module</Text></Pressable>}
     </View>;
   };
 
@@ -106,11 +92,9 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#303F94', padding: 12, borderRadius: 10, flex: 1, alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: '700' },
   emoji: { fontSize: 32 },
-  available: { color: '#167647', fontSize: 12, fontWeight: '700' },
   card: { flex: 1, minHeight: 210, backgroundColor: '#fff', borderRadius: 16, margin: 6, padding: 12, gap: 8 },
   name: { fontWeight: '700', fontSize: 17 },
   muted: { color: '#67748C', fontSize: 12 },
-  smallButton: { backgroundColor: '#303F94', borderRadius: 8, padding: 8, alignItems: 'center' },
   secondaryButton: { borderWidth: 1, borderColor: '#303F94', borderRadius: 8, padding: 8, alignItems: 'center' },
   secondaryText: { color: '#303F94', fontSize: 12, fontWeight: '700' }
 });

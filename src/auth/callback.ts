@@ -24,6 +24,6 @@ export function validateMobileCallback(callback: string, expectedState?: string)
   return { code, state };
 }
 
-export function isFreshPendingTransaction(createdAt: number, now = Date.now(), maxAgeMs = 120000): boolean {
-  return Number.isFinite(createdAt) && now - createdAt <= maxAgeMs;
+export function isFreshPendingTransaction(createdAt: number, now = Date.now(), maxAgeMs = 300000): boolean {
+  return Number.isFinite(createdAt) && Number.isFinite(now) && now >= createdAt && now - createdAt <= maxAgeMs;
 }
