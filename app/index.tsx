@@ -5,7 +5,10 @@ import type { CatalogApp } from '../src/catalog';
 import { startMobileLogin } from '../src/auth/native-login';
 import { bootstrapMobileSession, getMobileAccessToken, logoutMobileSession } from '../src/auth/mobile-api';
 
-const MASTER = 'https://www.myops.com.my';
+import { CENTRAL_ORIGIN } from '../src/auth/config';
+
+const ACCOUNT_URL = new URL('/account', CENTRAL_ORIGIN).href;
+const PRICING_URL = new URL('/pricing', CENTRAL_ORIGIN).href;
 
 const open = async (url: string) => {
   try {
@@ -76,8 +79,8 @@ export default function Home() {
       <Text style={styles.muted}>{item.description}</Text>
       <Text style={available ? styles.available : styles.muted}>{available ? 'Available' : 'Coming Soon'}</Text>
       {available ? <>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Explore trial and plans for ' + item.name} style={styles.smallButton} onPress={() => open(MASTER)}><Text style={styles.buttonText}>Explore Trial / Plans</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={'Open ' + item.name} style={styles.secondaryButton} onPress={() => open(item.url!)}><Text style={styles.secondaryText}>Open App</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Explore trial and plans for ' + item.name} style={styles.smallButton} onPress={() => open(PRICING_URL)}><Text style={styles.buttonText}>Explore Trial / Plans</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Open MYOPS account to launch ' + item.name} style={styles.secondaryButton} onPress={() => open(ACCOUNT_URL)}><Text style={styles.secondaryText}>Open via MYOPS</Text></Pressable>
       </> : <Text style={styles.muted}>Subscription not yet available</Text>}
     </View>;
   };
