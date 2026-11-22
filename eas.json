@@ -36,6 +36,12 @@
       "ios": {
         "simulator": false
       }
+    },
+    "preview-aab": {
+      "extends": "preview",
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   }
 }
