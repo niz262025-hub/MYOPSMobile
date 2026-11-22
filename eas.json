@@ -41,7 +41,9 @@
       "extends": "preview",
       "android": {
         "buildType": "app-bundle"
-      }
+      },
+      "distribution": "store",
+      "environment": "preview"
     }
   }
 }
